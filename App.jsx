@@ -7,9 +7,9 @@ import emailjs from "@emailjs/browser";
 const CONFIG = {
   companyName: "Old Town Design",
   emailJS: {
-    serviceId: "YOUR_SERVICE_ID",   // ← From EmailJS dashboard → Email Services
-    templateId: "YOUR_TEMPLATE_ID", // ← From EmailJS dashboard → Email Templates
-    publicKey: "YOUR_PUBLIC_KEY",   // ← From EmailJS dashboard → Account → API Keys
+    serviceId: "service_n5zpa0o",   // ← From EmailJS dashboard → Email Services
+    templateId: "template_4ynfska", // ← From EmailJS dashboard → Email Templates
+    publicKey: "IFx-86ajIgX8EyOuP",   // ← From EmailJS dashboard → Account → API Keys
   },
   visitReasons: [
     "Scheduled Appointment",
