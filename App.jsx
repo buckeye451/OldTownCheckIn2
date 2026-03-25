@@ -1,0 +1,597 @@
+import { useState, useEffect, useRef } from "react";
+import emailjs from "@emailjs/browser";
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIGURATION — Update these values for your business
+// ═══════════════════════════════════════════════════════════════
+const CONFIG = {
+  companyName: "Old Town Design",
+  emailJS: {
+    serviceId: "YOUR_SERVICE_ID",   // ← From EmailJS dashboard → Email Services
+    templateId: "YOUR_TEMPLATE_ID", // ← From EmailJS dashboard → Email Templates
+    publicKey: "YOUR_PUBLIC_KEY",   // ← From EmailJS dashboard → Account → API Keys
+  },
+  visitReasons: [
+    "Scheduled Appointment",
+    "Interview / Candidate",
+    "Vendor / Partner Meeting",
+    "Delivery / Pickup",
+    "Sales Inquiry",
+    "Client Meeting",
+    "Tour / Site Visit",
+    "Other",
+  ],
+};
+
+// ─── Theme ───
+const T = {
+  primary: "#1B4332",
+  primaryLight: "#2D6A4F",
+  primaryMid: "#40916C",
+  accent: "#52B788",
+  accentLight: "#74C69D",
+  bg: "#F6FAF7",
+  bgCard: "#EDF5F0",
+  bgInput: "#F0F7F2",
+  border: "#D1E4D8",
+  borderFocus: "#2D6A4F",
+  text: "#1B4332",
+  textMid: "#3E6B54",
+  textLight: "#6B9A7E",
+  textMuted: "#9DBDAB",
+  error: "#C0392B",
+  errorBg: "#FEF2F2",
+  errorBorder: "#FECACA",
+  warnBg: "#FFF7ED",
+  warnBorder: "#FED7AA",
+  warnText: "#C2410C",
+  shadow: "rgba(27, 67, 50, 0.25)",
+  shadowLight: "rgba(27, 67, 50, 0.1)",
+  font: "'Libre Franklin', 'Segoe UI', sans-serif",
+  fontDisplay: "'Fraunces', Georgia, serif",
+};
+
+const fadeUp = (delay = 0) => ({
+  opacity: 0,
+  transform: "translateY(20px)",
+  animation: `fadeUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) ${delay}s forwards`,
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  WELCOME SCREEN
+// ═══════════════════════════════════════════════════════════════
+function WelcomeScreen({ onCheckIn }) {
+  const [pulse, setPulse] = useState(false);
+  useEffect(() => {
+    const t = setInterval(() => setPulse((p) => !p), 2600);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      minHeight: "100%", padding: "32px 48px", gap: 64,
+    }}>
+      {/* Left: logo */}
+      <div style={{
+        ...fadeUp(0.1),
+        flex: "0 0 auto",
+        display: "flex", flexDirection: "column", alignItems: "center",
+      }}>
+        <div style={{
+          width: 140, height: 140, borderRadius: 32,
+          background: `linear-gradient(145deg, ${T.primary} 0%, ${T.primaryLight} 50%, ${T.primaryMid} 100%)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: `0 24px 64px ${T.shadow}, 0 0 0 1px rgba(255,255,255,0.06)`,
+        }}>
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <path d="M36 12L56 28V58H16V28L36 12Z" stroke="white" strokeWidth="2.5" fill="none" opacity="0.25" />
+            <path d="M36 20L50 31V52H22V31L36 20Z" stroke="white" strokeWidth="2" fill="rgba(255,255,255,0.06)" />
+            <rect x="30" y="40" width="12" height="12" rx="1" stroke="white" strokeWidth="2" opacity="0.7" />
+            <line x1="36" y1="40" x2="36" y2="52" stroke="white" strokeWidth="1.5" opacity="0.5" />
+            <circle cx="36" cy="32" r="4" fill="white" opacity="0.8" />
+          </svg>
+        </div>
+        <svg width="160" height="40" viewBox="0 0 160 40" fill="none" style={{ marginTop: 20, opacity: 0.3 }}>
+          <path d="M30 30C30 30 40 10 60 15C50 20 45 30 30 30Z" fill={T.accent} />
+          <path d="M130 30C130 30 120 10 100 15C110 20 115 30 130 30Z" fill={T.accent} />
+          <line x1="50" y1="35" x2="110" y2="35" stroke={T.accentLight} strokeWidth="1" strokeDasharray="4 4" />
+        </svg>
+      </div>
+
+      {/* Right: text + button */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+        <h1 style={{
+          ...fadeUp(0.2),
+          fontFamily: T.fontDisplay,
+          fontSize: "clamp(36px, 5vw, 56px)",
+          fontWeight: 700, color: T.primary,
+          margin: "0 0 8px", letterSpacing: "-0.02em", lineHeight: 1.05,
+        }}>
+          {CONFIG.companyName}
+        </h1>
+        <p style={{
+          ...fadeUp(0.35),
+          fontFamily: T.font, fontSize: 18, color: T.textLight,
+          margin: "0 0 48px", fontWeight: 500,
+          letterSpacing: "0.06em", textTransform: "uppercase",
+        }}>
+          Visitor Check-In
+        </p>
+        <button
+          onClick={onCheckIn}
+          style={{
+            ...fadeUp(0.5),
+            fontFamily: T.font, fontSize: 20, fontWeight: 700, color: "#fff",
+            background: `linear-gradient(135deg, ${T.primary} 0%, ${T.primaryLight} 100%)`,
+            border: "none", borderRadius: 18, padding: "24px 72px",
+            cursor: "pointer", letterSpacing: "0.07em", textTransform: "uppercase",
+            minHeight: 68,
+            boxShadow: pulse
+              ? `0 10px 44px ${T.shadow}, 0 0 0 7px rgba(45, 106, 79, 0.14)`
+              : `0 10px 36px rgba(27,67,50,0.22), 0 0 0 0px rgba(45,106,79,0)`,
+            transition: "all 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
+            transform: pulse ? "scale(1.03)" : "scale(1)",
+            WebkitTapHighlightColor: "transparent",
+            touchAction: "manipulation",
+          }}
+        >
+          Check In
+        </button>
+        <p style={{
+          ...fadeUp(0.65),
+          fontFamily: T.font, fontSize: 14, color: T.textMuted, marginTop: 24,
+        }}>
+          Tap the button to begin
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FORM COMPONENTS
+// ═══════════════════════════════════════════════════════════════
+function Field({ label, type = "text", value, onChange, placeholder, required, delay = 0, children }) {
+  const [focused, setFocused] = useState(false);
+  const baseStyle = {
+    fontFamily: T.font, fontSize: 18, color: T.text,
+    background: focused ? "#fff" : T.bgInput,
+    border: `2px solid ${focused ? T.borderFocus : T.border}`,
+    borderRadius: 14, padding: "16px 20px", minHeight: 56,
+    width: "100%", boxSizing: "border-box", outline: "none",
+    transition: "all 0.25s ease",
+    boxShadow: focused ? `0 4px 18px ${T.shadowLight}` : "none",
+    WebkitAppearance: "none",
+  };
+
+  return (
+    <div style={{ ...fadeUp(delay), marginBottom: 18 }}>
+      <label style={{
+        display: "block", fontFamily: T.font, fontSize: 13, fontWeight: 700,
+        color: T.textMid, marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase",
+      }}>
+        {label} {required && <span style={{ color: T.error }}>*</span>}
+      </label>
+      {children || (
+        type === "textarea" ? (
+          <textarea
+            value={value} onChange={onChange} placeholder={placeholder} rows={3}
+            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+            style={{ ...baseStyle, resize: "vertical", minHeight: 90 }}
+          />
+        ) : (
+          <input
+            type={type} value={value} onChange={onChange}
+            placeholder={placeholder} required={required}
+            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+            style={baseStyle}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options, required, delay }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ ...fadeUp(delay), marginBottom: 18 }}>
+      <label style={{
+        display: "block", fontFamily: T.font, fontSize: 13, fontWeight: 700,
+        color: T.textMid, marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase",
+      }}>
+        {label} {required && <span style={{ color: T.error }}>*</span>}
+      </label>
+      <select
+        value={value} onChange={onChange}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        style={{
+          fontFamily: T.font, fontSize: 18,
+          color: value ? T.text : T.textMuted,
+          background: focused ? "#fff" : T.bgInput,
+          border: `2px solid ${focused ? T.borderFocus : T.border}`,
+          borderRadius: 14, padding: "16px 20px", minHeight: 56,
+          width: "100%", boxSizing: "border-box", outline: "none",
+          cursor: "pointer", transition: "all 0.25s ease",
+          boxShadow: focused ? `0 4px 18px ${T.shadowLight}` : "none",
+          appearance: "none", WebkitAppearance: "none",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='14' height='9' viewBox='0 0 14 9' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L7 7.5L13 1.5' stroke='%236B9A7E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "no-repeat", backgroundPosition: "right 20px center",
+        }}
+      >
+        <option value="">Select a reason...</option>
+        {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+      </select>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FORM SCREEN
+// ═══════════════════════════════════════════════════════════════
+function FormScreen({ onSubmit, onBack }) {
+  const [form, setForm] = useState({
+    firstName: "", lastName: "", address: "",
+    email: "", phone: "", reason: "", comment: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
+  const formRef = useRef(null);
+
+  const update = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+    if (errors[field]) setErrors((er) => ({ ...er, [field]: null }));
+  };
+
+  const validate = () => {
+    const errs = {};
+    if (!form.firstName.trim()) errs.firstName = true;
+    if (!form.lastName.trim()) errs.lastName = true;
+    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) errs.email = true;
+    if (!form.phone.trim()) errs.phone = true;
+    if (!form.reason) errs.reason = true;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) {
+      formRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(false);
+
+    // Template parameters — these map to {{variables}} in your EmailJS template
+    const templateParams = {
+      first_name: form.firstName,
+      last_name: form.lastName,
+      address: form.address || "Not provided",
+      email: form.email,
+      phone: form.phone,
+      reason: form.reason,
+      comments: form.comment || "None",
+      checkin_time: new Date().toLocaleString(),
+    };
+
+    try {
+      await emailjs.send(
+        CONFIG.emailJS.serviceId,
+        CONFIG.emailJS.templateId,
+        templateParams,
+        CONFIG.emailJS.publicKey
+      );
+      console.log("✅ Visitor check-in sent via EmailJS:", templateParams);
+      setSubmitting(false);
+      onSubmit(form);
+    } catch (e) {
+      console.error("❌ EmailJS submission failed:", e);
+      setSubmitError(true);
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", maxHeight: "100%" }}>
+      {/* Header */}
+      <div style={{
+        padding: "18px 32px", borderBottom: `1px solid ${T.border}`,
+        display: "flex", alignItems: "center", gap: 16, flexShrink: 0,
+      }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            padding: 12, borderRadius: 12, display: "flex",
+            minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center",
+            transition: "background 0.2s",
+            WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = T.bgCard}
+          onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+        >
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M14 4L7 11L14 18" stroke={T.textMid} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div>
+          <h2 style={{ fontFamily: T.fontDisplay, fontSize: 24, fontWeight: 700, color: T.primary, margin: 0 }}>
+            Visitor Details
+          </h2>
+          <p style={{ fontFamily: T.font, fontSize: 14, color: T.textLight, margin: "2px 0 0" }}>
+            Please fill in the required fields below
+          </p>
+        </div>
+      </div>
+
+      {/* Two-column form */}
+      <div ref={formRef} style={{ flex: 1, overflowY: "auto", padding: "24px 40px 140px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <Field label="First Name" value={form.firstName} onChange={update("firstName")} placeholder="Jane" required delay={0.05} />
+              <Field label="Last Name" value={form.lastName} onChange={update("lastName")} placeholder="Doe" required delay={0.08} />
+            </div>
+            <Field label="Street Address" value={form.address} onChange={update("address")} placeholder="123 Main St, Suite 200" delay={0.11} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <Field label="Email Address" type="email" value={form.email} onChange={update("email")} placeholder="jane@company.com" required delay={0.14} />
+              <Field label="Phone Number" type="tel" value={form.phone} onChange={update("phone")} placeholder="(317) 555-0100" required delay={0.17} />
+            </div>
+          </div>
+          <div>
+            <SelectField label="Reason for Visit" value={form.reason} onChange={update("reason")} options={CONFIG.visitReasons} required delay={0.2} />
+            <Field label="Comments" type="textarea" value={form.comment} onChange={update("comment")} placeholder="Anything else we should know..." delay={0.23} />
+          </div>
+        </div>
+
+        {Object.keys(errors).length > 0 && (
+          <div style={{
+            background: T.errorBg, border: `1px solid ${T.errorBorder}`, borderRadius: 14,
+            padding: "14px 20px", marginTop: 8, marginBottom: 8,
+            fontFamily: T.font, fontSize: 16, color: "#B91C1C",
+            display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="9" stroke="#D94F4F" strokeWidth="1.5" />
+              <path d="M10 6V10.5M10 13.5V13.51" stroke="#D94F4F" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            Please complete all required fields
+          </div>
+        )}
+
+        {submitError && (
+          <div style={{
+            background: T.warnBg, border: `1px solid ${T.warnBorder}`, borderRadius: 14,
+            padding: "14px 20px", marginTop: 8, marginBottom: 8,
+            fontFamily: T.font, fontSize: 16, color: T.warnText,
+            display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="9" stroke="#EA580C" strokeWidth="1.5" />
+              <path d="M10 6V10.5M10 13.5V13.51" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            Submission failed. Please try again or notify the front desk.
+          </div>
+        )}
+      </div>
+
+      {/* Fixed submit bar */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        padding: "14px 40px 24px",
+        background: `linear-gradient(to top, ${T.bg} 70%, transparent)`,
+      }}>
+        <button
+          onClick={handleSubmit} disabled={submitting}
+          style={{
+            fontFamily: T.font, fontSize: 19, fontWeight: 700, color: "#fff",
+            background: submitting
+              ? `linear-gradient(135deg, ${T.textLight} 0%, ${T.textMuted} 100%)`
+              : `linear-gradient(135deg, ${T.primary} 0%, ${T.primaryLight} 100%)`,
+            border: "none", borderRadius: 16, padding: "22px 40px",
+            minHeight: 68, width: "100%",
+            cursor: submitting ? "wait" : "pointer",
+            letterSpacing: "0.05em", textTransform: "uppercase",
+            boxShadow: `0 10px 36px ${T.shadow}`,
+            transition: "all 0.3s ease",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+            WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+          }}
+        >
+          {submitting ? (
+            <>
+              <span style={{
+                width: 22, height: 22, border: "3px solid rgba(255,255,255,0.3)",
+                borderTopColor: "#fff", borderRadius: "50%",
+                animation: "spin 0.8s linear infinite", display: "inline-block",
+              }} />
+              Submitting...
+            </>
+          ) : "Submit Check-In"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIRMATION SCREEN
+// ═══════════════════════════════════════════════════════════════
+function ConfirmScreen({ visitor, onReset }) {
+  const [showCheck, setShowCheck] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowCheck(true), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(onReset, 15000);
+    return () => clearTimeout(t);
+  }, [onReset]);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      minHeight: "100%", padding: "32px 48px", gap: 56,
+    }}>
+      <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{
+          ...fadeUp(0.1),
+          width: 130, height: 130, borderRadius: "50%",
+          background: `linear-gradient(135deg, ${T.primaryMid} 0%, ${T.accent} 100%)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 20px 56px rgba(45, 106, 79, 0.35)",
+          transform: showCheck ? "scale(1)" : "scale(0.5)",
+          opacity: showCheck ? 1 : 0,
+          transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}>
+          <svg width="58" height="58" viewBox="0 0 58 58" fill="none">
+            <path d="M16 30L24 38L42 18" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ strokeDasharray: 55, strokeDashoffset: showCheck ? 0 : 55, transition: "stroke-dashoffset 0.6s ease 0.3s" }} />
+          </svg>
+        </div>
+        <p style={{ ...fadeUp(0.8), fontFamily: T.font, fontSize: 13, color: T.textMuted, marginTop: 32 }}>
+          This screen will reset automatically
+        </p>
+      </div>
+
+      <div style={{ maxWidth: 440 }}>
+        <h2 style={{
+          ...fadeUp(0.3), fontFamily: T.fontDisplay,
+          fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700,
+          color: T.primary, margin: "0 0 10px", lineHeight: 1.15,
+        }}>
+          Thank You, {visitor.firstName}!
+        </h2>
+        <p style={{
+          ...fadeUp(0.42), fontFamily: T.font,
+          fontSize: 18, color: T.textLight,
+          margin: "0 0 32px", lineHeight: 1.6,
+        }}>
+          We've recorded your visit. A member of our team will reach out to you shortly.
+        </p>
+
+        <div style={{
+          ...fadeUp(0.55), background: T.bgCard, borderRadius: 16,
+          padding: "20px 24px", border: `1px solid ${T.border}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="1" width="14" height="14" rx="3" stroke={T.textLight} strokeWidth="1.5" />
+              <path d="M4 8H12M4 5H12M4 11H8" stroke={T.textLight} strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span style={{
+              fontFamily: T.font, fontSize: 12, fontWeight: 700,
+              color: T.textLight, textTransform: "uppercase", letterSpacing: "0.06em",
+            }}>
+              Visit Summary
+            </span>
+          </div>
+          {[
+            ["Reason", visitor.reason],
+            ["Email", visitor.email],
+            ["Time", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })],
+          ].map(([k, v]) => (
+            <div key={k} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "10px 0", borderBottom: `1px solid ${T.border}`,
+            }}>
+              <span style={{ fontFamily: T.font, fontSize: 15, color: T.textLight }}>{k}</span>
+              <span style={{ fontFamily: T.font, fontSize: 16, fontWeight: 600, color: T.primary }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN APP
+// ═══════════════════════════════════════════════════════════════
+export default function App() {
+  const [screen, setScreen] = useState("welcome");
+  const [visitor, setVisitor] = useState(null);
+  const [transitioning, setTransitioning] = useState(false);
+
+  const navigate = (to, data) => {
+    setTransitioning(true);
+    setTimeout(() => {
+      if (data) setVisitor(data);
+      setScreen(to);
+      setTransitioning(false);
+    }, 280);
+  };
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700;800&family=Libre+Franklin:wght@400;500;600;700&display=swap');
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        * { -webkit-tap-highlight-color: transparent; }
+        html, body { overscroll-behavior: none; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: ${T.textMuted}; }
+        select option { font-family: 'Libre Franklin', 'Segoe UI', sans-serif; font-size: 18px; }
+        input, textarea, select { font-size: 18px !important; touch-action: manipulation; }
+      `}</style>
+
+      <div style={{
+        width: "100%", height: "100vh", background: T.bg,
+        position: "relative", overflow: "hidden", display: "flex", flexDirection: "column",
+      }}>
+        {/* Decorative background */}
+        <div style={{
+          position: "absolute", top: -100, right: -80, width: 360, height: 360,
+          background: "radial-gradient(circle, rgba(45, 106, 79, 0.06) 0%, transparent 70%)",
+          borderRadius: "50%", pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", bottom: -60, left: -60, width: 280, height: 280,
+          background: "radial-gradient(circle, rgba(27, 67, 50, 0.04) 0%, transparent 70%)",
+          borderRadius: "50%", pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: 4,
+          background: `linear-gradient(90deg, ${T.primary}, ${T.accent}, ${T.primaryLight})`,
+          zIndex: 10,
+        }} />
+
+        {/* Screen content */}
+        <div style={{
+          position: "relative", zIndex: 1, flex: 1,
+          opacity: transitioning ? 0 : 1,
+          transform: transitioning ? "scale(0.97)" : "scale(1)",
+          transition: "all 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
+        }}>
+          {screen === "welcome" && <WelcomeScreen onCheckIn={() => navigate("form")} />}
+          {screen === "form" && (
+            <FormScreen onBack={() => navigate("welcome")} onSubmit={(data) => navigate("confirm", data)} />
+          )}
+          {screen === "confirm" && visitor && (
+            <ConfirmScreen visitor={visitor} onReset={() => navigate("welcome")} />
+          )}
+        </div>
+
+        {/* Bottom brand */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          textAlign: "center", padding: 10, pointerEvents: "none", zIndex: 0,
+        }}>
+          <span style={{
+            fontFamily: T.font, fontSize: 11, color: T.textMuted,
+            letterSpacing: "0.08em", textTransform: "uppercase",
+          }}>
+            Powered by {CONFIG.companyName}
+          </span>
+        </div>
+      </div>
+    </>
+  );
+}
