@@ -9,7 +9,7 @@ const CONFIG = {
   emailJS: {
     serviceId: "service_n5zpa0o",   // ← From EmailJS dashboard → Email Services
     templateId: "template_4ynfska", // ← From EmailJS dashboard → Email Templates
-    dropoffTemplateId: "YOUR_DROPOFF_TEMPLATE_ID", // ← Template for drop-offs
+    dropoffTemplateId: "template_bmw02qk", // ← Template for drop-offs
     publicKey: "IFx-86ajIgX8EyOuP",   // ← From EmailJS dashboard → Account → API Keys
   },
  visitReasons: [
