@@ -33,7 +33,7 @@ const CONFIG = {
     "Letter",
     "Other",
   ],
-};
+}
 
 // ─── Theme ───
 const T = {
