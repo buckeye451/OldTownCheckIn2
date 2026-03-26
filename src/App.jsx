@@ -11,6 +11,7 @@ const CONFIG = {
     templateId: "template_4ynfska", // ← From EmailJS dashboard → Email Templates
     dropoffTemplateId: "template_bmw02qk", // ← Template for drop-offs
     publicKey: "IFx-86ajIgX8EyOuP",   // ← From EmailJS dashboard → Account → API Keys
+    },
  // ── Staff directory: names shown in "I am here to see" dropdown ──
   staff: [
     { name: "Katie" },
@@ -33,7 +34,7 @@ const CONFIG = {
     "Letter",
     "Other",
   ],
-}
+};
 
 // ─── Theme ───
 const T = {
