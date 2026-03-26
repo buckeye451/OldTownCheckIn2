@@ -12,7 +12,15 @@ const CONFIG = {
     dropoffTemplateId: "template_bmw02qk", // ← Template for drop-offs
     publicKey: "IFx-86ajIgX8EyOuP",   // ← From EmailJS dashboard → Account → API Keys
   },
- visitReasons: [
+// ── Staff directory: names shown in "I am here to see" dropdown ──
+  // Phone numbers are kept server-side in Vercel env vars for security
+  staff: [
+    { name: "Katie" },
+    { name: "Sam" },
+    { name: "Jordan" },
+    { name: "Alex" },
+  ],
+  visitReasons: [
     "Scheduled Appointment",
     "Interview / Candidate",
     "Vendor / Partner Meeting",
@@ -223,7 +231,7 @@ function Field({ label, type = "text", value, onChange, placeholder, required, d
   );
 }
 
-function SelectField({ label, value, onChange, options, required, delay }) {
+function SelectField({ label, value, onChange, options, required, delay, placeholder = "Select an option..." }) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ ...fadeUp(delay), marginBottom: 18 }}>
@@ -250,7 +258,7 @@ function SelectField({ label, value, onChange, options, required, delay }) {
           backgroundRepeat: "no-repeat", backgroundPosition: "right 20px center",
         }}
       >
-        <option value="">Select a reason...</option>
+        <option value="">{placeholder}</option>
         {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
       </select>
     </div>
@@ -263,7 +271,7 @@ function SelectField({ label, value, onChange, options, required, delay }) {
 function FormScreen({ onSubmit, onBack }) {
   const [form, setForm] = useState({
     firstName: "", lastName: "", address: "",
-    email: "", phone: "", reason: "", comment: "",
+    email: "", phone: "", reason: "", hereToSee: "", comment: "",
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -282,6 +290,7 @@ function FormScreen({ onSubmit, onBack }) {
     if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) errs.email = true;
     if (!form.phone.trim()) errs.phone = true;
     if (!form.reason) errs.reason = true;
+    if (!form.hereToSee) errs.hereToSee = true;
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -294,6 +303,8 @@ function FormScreen({ onSubmit, onBack }) {
     setSubmitting(true);
     setSubmitError(false);
 
+    const checkinTime = new Date().toLocaleString();
+
     // Template parameters — these map to {{variables}} in your EmailJS template
     const templateParams = {
       first_name: form.firstName,
@@ -302,17 +313,40 @@ function FormScreen({ onSubmit, onBack }) {
       email: form.email,
       phone: form.phone,
       reason: form.reason,
+      here_to_see: form.hereToSee,
       comments: form.comment || "None",
-      checkin_time: new Date().toLocaleString(),
+      checkin_time: checkinTime,
     };
 
     try {
+      // 1. Send email notification via EmailJS
       await emailjs.send(
         CONFIG.emailJS.serviceId,
         CONFIG.emailJS.checkinTemplateId,
         templateParams,
         CONFIG.emailJS.publicKey
       );
+
+      // 2. Send SMS notification to the selected staff member
+      if (form.hereToSee) {
+        try {
+          await fetch("/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              staffName: form.hereToSee,
+              visitorName: `${form.firstName} ${form.lastName}`,
+              reason: form.reason,
+              time: checkinTime,
+            }),
+          });
+          console.log("📱 SMS notification sent to", form.hereToSee);
+        } catch (smsErr) {
+          // SMS failure shouldn't block check-in — log but continue
+          console.warn("⚠️ SMS notification failed (check-in still recorded):", smsErr);
+        }
+      }
+
       console.log("✅ Visitor check-in sent via EmailJS:", templateParams);
       setSubmitting(false);
       onSubmit(form);
@@ -371,8 +405,9 @@ function FormScreen({ onSubmit, onBack }) {
             </div>
           </div>
           <div>
-            <SelectField label="Reason for Visit" value={form.reason} onChange={update("reason")} options={CONFIG.visitReasons} required delay={0.2} />
-            <Field label="Comments" type="textarea" value={form.comment} onChange={update("comment")} placeholder="Anything else we should know..." delay={0.23} />
+            <SelectField label="I Am Here to See" value={form.hereToSee} onChange={update("hereToSee")} options={CONFIG.staff.map(s => s.name)} required delay={0.2} placeholder="Select a person..." />
+            <SelectField label="Reason for Visit" value={form.reason} onChange={update("reason")} options={CONFIG.visitReasons} required delay={0.23} placeholder="Select a reason..." />
+            <Field label="Comments" type="textarea" value={form.comment} onChange={update("comment")} placeholder="Anything else we should know..." delay={0.26} />
           </div>
         </div>
 
@@ -501,7 +536,7 @@ function ConfirmScreen({ visitor, onReset }) {
           fontSize: 18, color: T.textLight,
           margin: "0 0 32px", lineHeight: 1.6,
         }}>
-          We've recorded your visit. A member of our team will reach out to you shortly.
+          We've recorded your visit. {visitor.hereToSee} has been notified and will be with you shortly.
         </p>
 
         <div style={{
@@ -521,6 +556,7 @@ function ConfirmScreen({ visitor, onReset }) {
             </span>
           </div>
           {[
+            ["Here to See", visitor.hereToSee],
             ["Reason", visitor.reason],
             ["Email", visitor.email],
             ["Time", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })],
@@ -909,3 +945,4 @@ export default function App() {
     </>
   );
 }
+
