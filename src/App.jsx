@@ -841,11 +841,13 @@ function DropOffFormScreen({ onSubmit, onBack }) {
 //  DROP OFF CONFIRMATION SCREEN
 // ═══════════════════════════════════════════════════════════════
 function DropOffConfirmScreen({ dropoff, onReset }) {
-  const [showCheck, setShowCheck] = useState(false);
+  const [stage, setStage] = useState(0); // 0=hidden, 1=lid opens, 2=letter drops, 3=lid closes + checkmark
 
   useEffect(() => {
-    const t = setTimeout(() => setShowCheck(true), 300);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setStage(1), 400);   // lid opens
+    const t2 = setTimeout(() => setStage(2), 1000);   // letter drops in
+    const t3 = setTimeout(() => setStage(3), 1800);   // lid closes, done
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   useEffect(() => {
@@ -858,45 +860,189 @@ function DropOffConfirmScreen({ dropoff, onReset }) {
       display: "flex", alignItems: "center", justifyContent: "center",
       minHeight: "100%", padding: "32px 48px", gap: 56,
     }}>
+      {/* Left: Drop box animation */}
       <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{
           ...fadeUp(0.1),
-          width: 130, height: 130, borderRadius: "50%",
-          background: `linear-gradient(135deg, ${T.primaryMid} 0%, ${T.accent} 100%)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 20px 56px rgba(45, 106, 79, 0.35)",
-          transform: showCheck ? "scale(1)" : "scale(0.5)",
-          opacity: showCheck ? 1 : 0,
-          transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          width: 200, height: 210,
+          position: "relative",
+          overflow: "visible",
         }}>
-          <svg width="58" height="58" viewBox="0 0 58 58" fill="none">
-            <path d="M16 30L24 38L42 18" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"
-              style={{ strokeDasharray: 55, strokeDashoffset: showCheck ? 0 : 55, transition: "stroke-dashoffset 0.6s ease 0.3s" }} />
+          {/* Letter / envelope */}
+          <div style={{
+            position: "absolute",
+            left: 62,
+            top: stage >= 2 ? 68 : -20,
+            opacity: stage >= 1 ? (stage >= 3 ? 0 : 1) : 0,
+            transform: stage >= 2
+              ? "rotate(0deg) scale(0.85)"
+              : "rotate(-6deg) scale(1)",
+            transition: stage >= 2
+              ? "all 0.6s cubic-bezier(0.55, 0, 1, 0.45)"
+              : "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+            zIndex: 5,
+          }}>
+            <svg width="72" height="52" viewBox="0 0 72 52" fill="none">
+              {/* Envelope body */}
+              <rect x="2" y="8" width="68" height="42" rx="4" fill="white" stroke={T.border} strokeWidth="2" />
+              {/* Envelope flap */}
+              <path d="M2 12L36 32L70 12" stroke={T.primaryMid} strokeWidth="2" fill={T.bgCard} />
+              {/* Address lines */}
+              <line x1="16" y1="28" x2="44" y2="28" stroke={T.border} strokeWidth="2" strokeLinecap="round" />
+              <line x1="16" y1="34" x2="36" y2="34" stroke={T.border} strokeWidth="1.5" strokeLinecap="round" />
+              {/* Stamp */}
+              <rect x="50" y="24" width="12" height="14" rx="2" fill={T.accent} opacity="0.5" />
+            </svg>
+          </div>
+
+          {/* Drop box */}
+          <svg width="180" height="190" viewBox="0 0 180 190" style={{
+            position: "absolute",
+            left: 10, bottom: 0,
+            filter: "drop-shadow(0 8px 24px rgba(27, 67, 50, 0.18))",
+          }}>
+            {/* Box body */}
+            <rect x="30" y="60" width="120" height="100" rx="10" fill={T.primary} />
+            {/* Front panel detail */}
+            <rect x="46" y="76" width="88" height="68" rx="6" fill={T.primaryLight} opacity="0.4" />
+            {/* Mail slot */}
+            <rect x="55" y="85" width="70" height="8" rx="4" fill={T.primaryMid} opacity="0.7" />
+            {/* Slot shadow */}
+            <rect x="58" y="90" width="64" height="3" rx="1.5" fill="#0f2b20" opacity="0.3" />
+            {/* "DROP BOX" label */}
+            <text x="90" y="125" textAnchor="middle" fill={T.accentLight} fontSize="11" fontWeight="700" fontFamily="Helvetica, Arial, sans-serif" letterSpacing="2" opacity="0.7">
+              DROP BOX
+            </text>
+            {/* Legs */}
+            <rect x="42" y="156" width="10" height="28" rx="3" fill={T.primaryLight} />
+            <rect x="128" y="156" width="10" height="28" rx="3" fill={T.primaryLight} />
+            {/* Ground shadow */}
+            <ellipse cx="90" cy="188" rx="60" ry="4" fill={T.primary} opacity="0.1" />
+
+            {/* Lid - animates open/closed */}
+            <g style={{
+              transform: stage >= 1 && stage < 3 ? "rotate(-35deg)" : "rotate(0deg)",
+              transformOrigin: "30px 60px",
+              transition: stage >= 3
+                ? "transform 0.3s cubic-bezier(0.55, 0, 1, 0.45)"
+                : "transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+            }}>
+              <rect x="30" y="48" width="120" height="16" rx="6" fill={T.primaryLight} />
+              {/* Lid highlight */}
+              <rect x="36" y="50" width="108" height="4" rx="2" fill={T.primaryMid} opacity="0.3" />
+            </g>
+
+            {/* Checkmark circle (appears at end) */}
+            <g style={{
+              opacity: stage >= 3 ? 1 : 0,
+              transform: stage >= 3 ? "scale(1)" : "scale(0.5)",
+              transformOrigin: "90px 108px",
+              transition: "all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s",
+            }}>
+              <circle cx="90" cy="108" r="18" fill={T.accent} />
+              <path d="M80 108L87 115L100 101" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                style={{
+                  strokeDasharray: 30,
+                  strokeDashoffset: stage >= 3 ? 0 : 30,
+                  transition: "stroke-dashoffset 0.4s ease 0.4s",
+                }}
+              />
+            </g>
           </svg>
+
+          {/* Sparkles after letter lands */}
+          {stage >= 3 && [
+            { x: 25, y: 50, delay: 0, size: 7 },
+            { x: 160, y: 40, delay: 0.1, size: 5 },
+            { x: 40, y: 100, delay: 0.15, size: 6 },
+            { x: 155, y: 95, delay: 0.2, size: 8 },
+          ].map((s, i) => (
+            <div key={i} style={{
+              position: "absolute",
+              left: s.x, top: s.y,
+              width: s.size, height: s.size,
+              borderRadius: "50%",
+              background: T.accent,
+              opacity: 0,
+              animation: `sparkle 0.8s ease ${s.delay}s forwards`,
+            }} />
+          ))}
         </div>
-        <p style={{ ...fadeUp(0.8), fontFamily: T.font, fontSize: 13, color: T.textMuted, marginTop: 32 }}>
+
+        <p style={{
+          fontFamily: T.font, fontSize: 13, color: T.textMuted, marginTop: 12,
+          opacity: stage >= 3 ? 1 : 0,
+          transition: "opacity 0.5s ease",
+        }}>
           This screen will reset automatically
         </p>
       </div>
 
-      <div style={{ maxWidth: 440 }}>
+      {/* Right: message + instructions + summary */}
+      <div style={{ maxWidth: 460 }}>
         <h2 style={{
           ...fadeUp(0.3), fontFamily: T.fontDisplay,
-          fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700,
+          fontSize: "clamp(28px, 4vw, 38px)", fontWeight: 700,
           color: T.primary, margin: "0 0 10px", lineHeight: 1.15,
         }}>
-          Drop Off Received!
+          Thank You, {dropoff.firstName}!
         </h2>
         <p style={{
           ...fadeUp(0.42), fontFamily: T.font,
-          fontSize: 18, color: T.textLight,
-          margin: "0 0 32px", lineHeight: 1.6,
+          fontSize: 17, color: T.textLight,
+          margin: "0 0 24px", lineHeight: 1.6,
         }}>
-          Thank you, {dropoff.firstName}. We've logged your drop off and our team has been notified.
+          We've logged your drop off. Please follow these steps to complete it:
         </p>
 
+        {/* Instructions */}
+        <div style={{ ...fadeUp(0.52), marginBottom: 24 }}>
+          {[
+            { num: "1", text: "Place your item in the drop box located by the front door" },
+            { num: "2", text: "Close the drop box lid securely" },
+          ].map((step) => (
+            <div key={step.num} style={{
+              display: "flex", alignItems: "flex-start", gap: 14,
+              marginBottom: 16,
+            }}>
+              <div style={{
+                minWidth: 36, height: 36, borderRadius: "50%",
+                background: `linear-gradient(135deg, ${T.primary}, ${T.primaryLight})`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: T.font, fontSize: 16, fontWeight: 700, color: "#fff",
+                flexShrink: 0,
+              }}>
+                {step.num}
+              </div>
+              <p style={{
+                fontFamily: T.font, fontSize: 16, color: T.text,
+                margin: 0, lineHeight: 1.5, paddingTop: 6,
+              }}>
+                {step.text}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Confirmation badge */}
+        <p style={{
+          opacity: stage >= 3 ? 1 : 0,
+          transition: "opacity 0.6s ease 0.2s",
+          fontFamily: T.font,
+          fontSize: 14, color: T.accent, fontWeight: 600,
+          margin: "0 0 20px",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="8" stroke={T.accent} strokeWidth="1.5" />
+            <path d="M6 9L8 11L12 7" stroke={T.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Our team has been notified
+        </p>
+
+        {/* Summary card */}
         <div style={{
-          ...fadeUp(0.55), background: T.bgCard, borderRadius: 16,
+          ...fadeUp(0.62), background: T.bgCard, borderRadius: 16,
           padding: "20px 24px", border: `1px solid ${T.border}`,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
