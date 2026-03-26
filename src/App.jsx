@@ -9,9 +9,10 @@ const CONFIG = {
   emailJS: {
     serviceId: "service_n5zpa0o",   // ← From EmailJS dashboard → Email Services
     templateId: "template_4ynfska", // ← From EmailJS dashboard → Email Templates
+    dropoffTemplateId: "YOUR_DROPOFF_TEMPLATE_ID", // ← Template for drop-offs
     publicKey: "IFx-86ajIgX8EyOuP",   // ← From EmailJS dashboard → Account → API Keys
   },
-  visitReasons: [
+ visitReasons: [
     "Scheduled Appointment",
     "Interview / Candidate",
     "Vendor / Partner Meeting",
@@ -19,6 +20,11 @@ const CONFIG = {
     "Sales Inquiry",
     "Client Meeting",
     "Tour / Site Visit",
+    "Other",
+  ],
+  dropOffItems: [
+    "Check",
+    "Letter",
     "Other",
   ],
 };
@@ -60,7 +66,7 @@ const fadeUp = (delay = 0) => ({
 // ═══════════════════════════════════════════════════════════════
 //  WELCOME SCREEN
 // ═══════════════════════════════════════════════════════════════
-function WelcomeScreen({ onCheckIn }) {
+function WelcomeScreen({ onCheckIn, onDropOff }) {
   const [pulse, setPulse] = useState(false);
   useEffect(() => {
     const t = setInterval(() => setPulse((p) => !p), 2600);
@@ -99,7 +105,7 @@ function WelcomeScreen({ onCheckIn }) {
         </svg>
       </div>
 
-      {/* Right: text + button */}
+      {/* Right: text + buttons */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
         <h1 style={{
           ...fadeUp(0.2),
@@ -113,36 +119,60 @@ function WelcomeScreen({ onCheckIn }) {
         <p style={{
           ...fadeUp(0.35),
           fontFamily: T.font, fontSize: 18, color: T.textLight,
-          margin: "0 0 48px", fontWeight: 500,
+          margin: "0 0 44px", fontWeight: 500,
           letterSpacing: "0.06em", textTransform: "uppercase",
         }}>
-          Visitor Check-In
+          Welcome — How Can We Help?
         </p>
-        <button
-          onClick={onCheckIn}
-          style={{
-            ...fadeUp(0.5),
-            fontFamily: T.font, fontSize: 20, fontWeight: 700, color: "#fff",
-            background: `linear-gradient(135deg, ${T.primary} 0%, ${T.primaryLight} 100%)`,
-            border: "none", borderRadius: 18, padding: "24px 72px",
-            cursor: "pointer", letterSpacing: "0.07em", textTransform: "uppercase",
-            minHeight: 68,
-            boxShadow: pulse
-              ? `0 10px 44px ${T.shadow}, 0 0 0 7px rgba(45, 106, 79, 0.14)`
-              : `0 10px 36px rgba(27,67,50,0.22), 0 0 0 0px rgba(45,106,79,0)`,
-            transition: "all 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
-            transform: pulse ? "scale(1.03)" : "scale(1)",
-            WebkitTapHighlightColor: "transparent",
-            touchAction: "manipulation",
-          }}
-        >
-          Check In
-        </button>
+
+        {/* Button row */}
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          <button
+            onClick={onCheckIn}
+            style={{
+              ...fadeUp(0.5),
+              fontFamily: T.font, fontSize: 20, fontWeight: 700, color: "#fff",
+              background: `linear-gradient(135deg, ${T.primary} 0%, ${T.primaryLight} 100%)`,
+              border: "none", borderRadius: 18, padding: "24px 56px",
+              cursor: "pointer", letterSpacing: "0.07em", textTransform: "uppercase",
+              minHeight: 68,
+              boxShadow: pulse
+                ? `0 10px 44px ${T.shadow}, 0 0 0 7px rgba(45, 106, 79, 0.14)`
+                : `0 10px 36px rgba(27,67,50,0.22), 0 0 0 0px rgba(45,106,79,0)`,
+              transition: "all 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
+              transform: pulse ? "scale(1.03)" : "scale(1)",
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
+            }}
+          >
+            Check In
+          </button>
+
+          <button
+            onClick={onDropOff}
+            style={{
+              ...fadeUp(0.6),
+              fontFamily: T.font, fontSize: 20, fontWeight: 700, color: T.primary,
+              background: "#fff",
+              border: `3px solid ${T.primary}`,
+              borderRadius: 18, padding: "24px 56px",
+              cursor: "pointer", letterSpacing: "0.07em", textTransform: "uppercase",
+              minHeight: 68,
+              boxShadow: "0 6px 24px rgba(27,67,50,0.12)",
+              transition: "all 0.3s ease",
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
+            }}
+          >
+            Drop Off
+          </button>
+        </div>
+
         <p style={{
-          ...fadeUp(0.65),
+          ...fadeUp(0.75),
           fontFamily: T.font, fontSize: 14, color: T.textMuted, marginTop: 24,
         }}>
-          Tap the button to begin
+          Tap a button to begin
         </p>
       </div>
     </div>
@@ -279,7 +309,7 @@ function FormScreen({ onSubmit, onBack }) {
     try {
       await emailjs.send(
         CONFIG.emailJS.serviceId,
-        CONFIG.emailJS.templateId,
+        CONFIG.emailJS.checkinTemplateId,
         templateParams,
         CONFIG.emailJS.publicKey
       );
@@ -510,17 +540,290 @@ function ConfirmScreen({ visitor, onReset }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  DROP OFF FORM SCREEN
+// ═══════════════════════════════════════════════════════════════
+function DropOffFormScreen({ onSubmit, onBack }) {
+  const [form, setForm] = useState({
+    firstName: "", lastName: "", item: "", notes: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
+  const formRef = useRef(null);
+
+  const update = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+    if (errors[field]) setErrors((er) => ({ ...er, [field]: null }));
+  };
+
+  const validate = () => {
+    const errs = {};
+    if (!form.firstName.trim()) errs.firstName = true;
+    if (!form.lastName.trim()) errs.lastName = true;
+    if (!form.item) errs.item = true;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) {
+      formRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(false);
+
+    const dropoffTime = new Date().toLocaleString();
+
+    const templateParams = {
+      first_name: form.firstName,
+      last_name: form.lastName,
+      item: form.item,
+      notes: form.notes || "None",
+      dropoff_time: dropoffTime,
+    };
+
+    try {
+      await emailjs.send(
+        CONFIG.emailJS.serviceId,
+        CONFIG.emailJS.dropoffTemplateId,
+        templateParams,
+        CONFIG.emailJS.publicKey
+      );
+      console.log("✅ Drop-off sent via EmailJS:", templateParams);
+      setSubmitting(false);
+      onSubmit({ ...form, dropoffTime });
+    } catch (e) {
+      console.error("❌ EmailJS drop-off submission failed:", e);
+      setSubmitError(true);
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", maxHeight: "100%" }}>
+      {/* Header */}
+      <div style={{
+        padding: "18px 32px", borderBottom: `1px solid ${T.border}`,
+        display: "flex", alignItems: "center", gap: 16, flexShrink: 0,
+      }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            padding: 12, borderRadius: 12, display: "flex",
+            minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center",
+            transition: "background 0.2s",
+            WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = T.bgCard}
+          onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+        >
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M14 4L7 11L14 18" stroke={T.textMid} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div>
+          <h2 style={{ fontFamily: T.fontDisplay, fontSize: 24, fontWeight: 700, color: T.primary, margin: 0 }}>
+            Drop Off Details
+          </h2>
+          <p style={{ fontFamily: T.font, fontSize: 14, color: T.textLight, margin: "2px 0 0" }}>
+            Tell us what you're dropping off
+          </p>
+        </div>
+      </div>
+
+      {/* Form — centered single column for fewer fields */}
+      <div ref={formRef} style={{ flex: 1, overflowY: "auto", padding: "32px 40px 140px", display: "flex", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: 560 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <Field label="First Name" value={form.firstName} onChange={update("firstName")} placeholder="Jane" required delay={0.05} />
+            <Field label="Last Name" value={form.lastName} onChange={update("lastName")} placeholder="Doe" required delay={0.08} />
+          </div>
+
+          <SelectField label="Dropped Off Item" value={form.item} onChange={update("item")} options={CONFIG.dropOffItems} required delay={0.14} />
+
+          <Field label="Notes" type="textarea" value={form.notes} onChange={update("notes")} placeholder="Any additional details (optional)..." delay={0.2} />
+
+          {Object.keys(errors).length > 0 && (
+            <div style={{
+              background: T.errorBg, border: `1px solid ${T.errorBorder}`, borderRadius: 14,
+              padding: "14px 20px", marginTop: 8, marginBottom: 8,
+              fontFamily: T.font, fontSize: 16, color: "#B91C1C",
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="9" stroke="#D94F4F" strokeWidth="1.5" />
+                <path d="M10 6V10.5M10 13.5V13.51" stroke="#D94F4F" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              Please complete all required fields
+            </div>
+          )}
+
+          {submitError && (
+            <div style={{
+              background: T.warnBg, border: `1px solid ${T.warnBorder}`, borderRadius: 14,
+              padding: "14px 20px", marginTop: 8, marginBottom: 8,
+              fontFamily: T.font, fontSize: 16, color: T.warnText,
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="9" stroke="#EA580C" strokeWidth="1.5" />
+                <path d="M10 6V10.5M10 13.5V13.51" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              Submission failed. Please try again or notify the front desk.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Fixed submit bar */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        padding: "14px 40px 24px",
+        background: `linear-gradient(to top, ${T.bg} 70%, transparent)`,
+      }}>
+        <button
+          onClick={handleSubmit} disabled={submitting}
+          style={{
+            fontFamily: T.font, fontSize: 19, fontWeight: 700, color: "#fff",
+            background: submitting
+              ? `linear-gradient(135deg, ${T.textLight} 0%, ${T.textMuted} 100%)`
+              : `linear-gradient(135deg, ${T.primary} 0%, ${T.primaryLight} 100%)`,
+            border: "none", borderRadius: 16, padding: "22px 40px",
+            minHeight: 68, width: "100%",
+            cursor: submitting ? "wait" : "pointer",
+            letterSpacing: "0.05em", textTransform: "uppercase",
+            boxShadow: `0 10px 36px ${T.shadow}`,
+            transition: "all 0.3s ease",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+            WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+          }}
+        >
+          {submitting ? (
+            <>
+              <span style={{
+                width: 22, height: 22, border: "3px solid rgba(255,255,255,0.3)",
+                borderTopColor: "#fff", borderRadius: "50%",
+                animation: "spin 0.8s linear infinite", display: "inline-block",
+              }} />
+              Submitting...
+            </>
+          ) : "Submit Drop Off"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DROP OFF CONFIRMATION SCREEN
+// ═══════════════════════════════════════════════════════════════
+function DropOffConfirmScreen({ dropoff, onReset }) {
+  const [showCheck, setShowCheck] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowCheck(true), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(onReset, 15000);
+    return () => clearTimeout(t);
+  }, [onReset]);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      minHeight: "100%", padding: "32px 48px", gap: 56,
+    }}>
+      <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{
+          ...fadeUp(0.1),
+          width: 130, height: 130, borderRadius: "50%",
+          background: `linear-gradient(135deg, ${T.primaryMid} 0%, ${T.accent} 100%)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 20px 56px rgba(45, 106, 79, 0.35)",
+          transform: showCheck ? "scale(1)" : "scale(0.5)",
+          opacity: showCheck ? 1 : 0,
+          transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}>
+          <svg width="58" height="58" viewBox="0 0 58 58" fill="none">
+            <path d="M16 30L24 38L42 18" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ strokeDasharray: 55, strokeDashoffset: showCheck ? 0 : 55, transition: "stroke-dashoffset 0.6s ease 0.3s" }} />
+          </svg>
+        </div>
+        <p style={{ ...fadeUp(0.8), fontFamily: T.font, fontSize: 13, color: T.textMuted, marginTop: 32 }}>
+          This screen will reset automatically
+        </p>
+      </div>
+
+      <div style={{ maxWidth: 440 }}>
+        <h2 style={{
+          ...fadeUp(0.3), fontFamily: T.fontDisplay,
+          fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700,
+          color: T.primary, margin: "0 0 10px", lineHeight: 1.15,
+        }}>
+          Drop Off Received!
+        </h2>
+        <p style={{
+          ...fadeUp(0.42), fontFamily: T.font,
+          fontSize: 18, color: T.textLight,
+          margin: "0 0 32px", lineHeight: 1.6,
+        }}>
+          Thank you, {dropoff.firstName}. We've logged your drop off and our team has been notified.
+        </p>
+
+        <div style={{
+          ...fadeUp(0.55), background: T.bgCard, borderRadius: 16,
+          padding: "20px 24px", border: `1px solid ${T.border}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="1" width="14" height="14" rx="3" stroke={T.textLight} strokeWidth="1.5" />
+              <path d="M4 8H12M4 5H12M4 11H8" stroke={T.textLight} strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span style={{
+              fontFamily: T.font, fontSize: 12, fontWeight: 700,
+              color: T.textLight, textTransform: "uppercase", letterSpacing: "0.06em",
+            }}>
+              Drop Off Summary
+            </span>
+          </div>
+          {[
+            ["From", `${dropoff.firstName} ${dropoff.lastName}`],
+            ["Item", dropoff.item],
+            ["Notes", dropoff.notes || "—"],
+            ["Time", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })],
+          ].map(([k, v]) => (
+            <div key={k} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "10px 0", borderBottom: `1px solid ${T.border}`,
+            }}>
+              <span style={{ fontFamily: T.font, fontSize: 15, color: T.textLight }}>{k}</span>
+              <span style={{ fontFamily: T.font, fontSize: 16, fontWeight: 600, color: T.primary, textAlign: "right", maxWidth: 260 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  MAIN APP
 // ═══════════════════════════════════════════════════════════════
 export default function App() {
   const [screen, setScreen] = useState("welcome");
   const [visitor, setVisitor] = useState(null);
+  const [dropoff, setDropoff] = useState(null);
   const [transitioning, setTransitioning] = useState(false);
 
   const navigate = (to, data) => {
     setTransitioning(true);
     setTimeout(() => {
-      if (data) setVisitor(data);
+      if (to === "confirm") setVisitor(data);
+      if (to === "dropoff-confirm") setDropoff(data);
       setScreen(to);
       setTransitioning(false);
     }, 280);
@@ -570,12 +873,23 @@ export default function App() {
           transform: transitioning ? "scale(0.97)" : "scale(1)",
           transition: "all 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
         }}>
-          {screen === "welcome" && <WelcomeScreen onCheckIn={() => navigate("form")} />}
+          {screen === "welcome" && (
+            <WelcomeScreen
+              onCheckIn={() => navigate("form")}
+              onDropOff={() => navigate("dropoff-form")}
+            />
+          )}
           {screen === "form" && (
             <FormScreen onBack={() => navigate("welcome")} onSubmit={(data) => navigate("confirm", data)} />
           )}
           {screen === "confirm" && visitor && (
             <ConfirmScreen visitor={visitor} onReset={() => navigate("welcome")} />
+          )}
+          {screen === "dropoff-form" && (
+            <DropOffFormScreen onBack={() => navigate("welcome")} onSubmit={(data) => navigate("dropoff-confirm", data)} />
+          )}
+          {screen === "dropoff-confirm" && dropoff && (
+            <DropOffConfirmScreen dropoff={dropoff} onReset={() => navigate("welcome")} />
           )}
         </div>
 
